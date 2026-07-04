@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-namespace
+  annotations:
+    policies.kyverno.io/title: Disallow Default Namespace
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      The default namespace has no ownership, no quotas, and usually no
+      NetworkPolicy. Workloads there are un-governed. This policy forces every
+      pod into a deliberately-created namespace.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-default-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Running in the 'default' namespace is not allowed; use a dedicated namespace."
+        pattern:
+          metadata:
+            namespace: "!default"

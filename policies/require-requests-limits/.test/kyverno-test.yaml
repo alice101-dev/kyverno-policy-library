@@ -1,0 +1,21 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-requests-limits
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: require-requests-limits
+    rule: require-requests-limits
+    kind: Pod
+    resources:
+      - good-pod
+    result: pass
+  - policy: require-requests-limits
+    rule: require-requests-limits
+    kind: Pod
+    resources:
+      - bad-pod-no-limits
+    result: fail

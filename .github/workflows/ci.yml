@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  KYVERNO_VERSION: v1.18.1
+
+jobs:
+  kyverno-test:
+    name: Policy tests (kyverno test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Kyverno CLI
+        run: |
+          curl -sSL "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_amd64.tar.gz" | tar xz kyverno
+          sudo mv kyverno /usr/local/bin/
+
+      # Every policy ships good+bad fixtures; this proves each one accepts what
+      # it should and rejects what it shouldn't — a real gate, not a lint.
+      - name: Run policy tests
+        run: kyverno test ./policies/
+
+  gitleaks:
+    name: Secret scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

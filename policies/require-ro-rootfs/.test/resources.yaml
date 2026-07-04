@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-ro
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-writable
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      # writable root filesystem — must be rejected
