@@ -3,8 +3,8 @@
 [![CI](https://github.com/alice101-dev/kyverno-policy-library/actions/workflows/ci.yml/badge.svg)](https://github.com/alice101-dev/kyverno-policy-library/actions/workflows/ci.yml)
 
 **Policy as Code** for Kubernetes: cluster guardrails defined, versioned, and
-unit-tested like software. The hardening my other repos apply *by hand*, turned
-into **admission-time law** with [Kyverno](https://kyverno.io). A deployment that forgets a resource limit,
+unit-tested like software, enforced as **admission-time law** with
+[Kyverno](https://kyverno.io). A deployment that forgets a resource limit,
 runs as root, or ships a `:latest` tag doesn't get a code-review comment — it
 gets **rejected by the cluster**. Every policy is unit-tested with good and bad
 fixtures, so the library is a real gate, not a pile of YAML.
@@ -29,15 +29,14 @@ fixtures and a `kyverno test` spec that asserts pass/fail per resource.
 
 ## Why this exists
 
-My other repos each *practice* one of these rules:
-
-- [gke-pgbouncer-hardened](https://github.com/alice101-dev/gke-pgbouncer-hardened) — non-root, read-only fs, no SA token
-- [k8s-pdb-production-patterns](https://github.com/alice101-dev/k8s-pdb-production-patterns) — resource limits, restricted PSS
-- [supply-chain-secure-build](https://github.com/alice101-dev/supply-chain-secure-build) — digest-pinned images, signature verification
-
 A manifest is only as safe as the reviewer who reads it. This library makes the
 rules **non-optional**: enforced on every apply, for every team, whether anyone
 reviews the YAML or not.
+
+It pairs with
+[supply-chain-secure-build](https://github.com/alice101-dev/supply-chain-secure-build):
+that repo *produces* trustworthy images (digest-pinned, signed); this one makes
+the cluster *demand* them, rejecting `:latest` and untagged images at admission.
 
 ## Try it
 
