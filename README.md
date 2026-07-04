@@ -60,6 +60,20 @@ kubectl apply -f policies/require-non-root/policy.yaml
 kubectl get policyreport -A   # what currently violates the policy
 ```
 
+### System namespaces are excluded (GKE-safe)
+
+Every rule carries an `exclude` block for cluster/system namespaces:
+`kube-system`, `kube-public`, `kube-node-lease`, `kyverno`, and the
+GKE-managed ones (`gke-*`, `gmp-*`, `config-management-*`, `cnrm-system`).
+System pods (kube-dns, konnectivity, metrics-server, ...) run as root with
+writable filesystems by design; blocking their re-creation during a node
+upgrade or auto-repair can take down DNS, logging, and metrics — or deadlock
+Kyverno itself. Each policy's test suite includes a non-compliant pod in
+`kube-system` and asserts it is **skipped**, not rejected. Don't rely solely
+on the Kyverno install's `resourceFilters`/webhook `namespaceSelector`:
+those depend on install-time values, while these exclusions travel with the
+policies.
+
 ## CI
 
 Every push and pull request runs through [GitHub Actions](.github/workflows/ci.yml):

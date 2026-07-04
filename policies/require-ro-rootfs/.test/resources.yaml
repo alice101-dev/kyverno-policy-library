@@ -20,3 +20,30 @@ spec:
     - name: app
       image: nginx:1.29
       # writable root filesystem — must be rejected
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-writable-init
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      image: busybox:1.37
+      # writable root filesystem in init container — must be rejected
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      # violates the rule, but kube-system is excluded — must be skipped

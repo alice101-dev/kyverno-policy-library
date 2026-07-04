@@ -85,3 +85,23 @@ spec:
       containers:
         - name: app
           image: nginx:1.29
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exempt-system-deployment
+  namespace: kube-system
+spec:
+  # no spreading configured, but kube-system is excluded — must be skipped
+  replicas: 2
+  selector:
+    matchLabels:
+      app: system-agent
+  template:
+    metadata:
+      labels:
+        app: system-agent
+    spec:
+      containers:
+        - name: agent
+          image: nginx:latest

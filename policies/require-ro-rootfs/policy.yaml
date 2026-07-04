@@ -7,10 +7,13 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: medium
     policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
     policies.kyverno.io/description: >-
       A read-only root filesystem stops an attacker who lands code execution
       from writing tools or modifying binaries in the container. Writable paths
-      should be explicit emptyDir mounts instead.
+      should be explicit emptyDir mounts instead. Applies to regular and init
+      containers; ephemeral (debug) containers are exempt so kubectl debug
+      keeps working.
 spec:
   validationFailureAction: Enforce
   background: true
@@ -21,10 +24,32 @@ spec:
           - resources:
               kinds:
                 - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
       validate:
-        message: "Containers must set securityContext.readOnlyRootFilesystem to true."
-        pattern:
-          spec:
-            containers:
-              - securityContext:
-                  readOnlyRootFilesystem: true
+        cel:
+          expressions:
+            - expression: >-
+                object.spec.containers.all(c,
+                  c.?securityContext.?readOnlyRootFilesystem.orValue(false) == true) &&
+                object.spec.?initContainers.orValue([]).all(c,
+                  c.?securityContext.?readOnlyRootFilesystem.orValue(false) == true)
+              message: >-
+                All containers (including init containers) must set
+                securityContext.readOnlyRootFilesystem to true.

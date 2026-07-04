@@ -18,4 +18,11 @@ results:
     kind: Pod
     resources:
       - bad-pod-writable
+      - bad-pod-writable-init
     result: fail
+  - policy: require-ro-rootfs
+    rule: require-ro-rootfs
+    kind: Pod
+    resources:
+      - exempt-system-pod
+    result: skip

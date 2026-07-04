@@ -15,3 +15,14 @@ spec:
   containers:
     - name: app
       image: nginx:latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: nginx:latest
+      # non-compliant, but kube-system is excluded — the rule must be skipped

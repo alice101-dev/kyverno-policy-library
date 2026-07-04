@@ -22,6 +22,21 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
       validate:
         message: "Containers must drop ALL capabilities (securityContext.capabilities.drop must include ALL)."
         pattern:

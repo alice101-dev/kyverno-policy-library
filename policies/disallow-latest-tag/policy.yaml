@@ -21,6 +21,21 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
       validate:
         message: "An explicit image tag is required."
         pattern:
@@ -33,6 +48,21 @@ spec:
           - resources:
               kinds:
                 - Pod
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
       validate:
         message: "Using a mutable ':latest' tag is not allowed; pin a version or digest."
         pattern:

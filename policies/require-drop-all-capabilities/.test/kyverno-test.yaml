@@ -19,3 +19,9 @@ results:
     resources:
       - bad-pod-keeps-caps
     result: fail
+  - policy: require-drop-all-capabilities
+    rule: require-drop-all
+    kind: Pod
+    resources:
+      - exempt-system-pod
+    result: skip

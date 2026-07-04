@@ -21,3 +21,9 @@ results:
     resources:
       - bad-no-spreading
     result: fail
+  - policy: require-pod-anti-affinity
+    rule: require-replica-spreading
+    kind: Deployment
+    resources:
+      - exempt-system-deployment
+    result: skip
