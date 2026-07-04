@@ -7,10 +7,13 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
     policies.kyverno.io/description: >-
       allowPrivilegeEscalation lets a process gain more privileges than its
       parent (e.g. via setuid binaries). Setting it to false closes a common
       container-escape path. Required by the restricted Pod Security Standard.
+      Applies to regular and init containers; ephemeral (debug) containers are
+      exempt so kubectl debug keeps working.
 spec:
   validationFailureAction: Enforce
   background: true
@@ -21,6 +24,9 @@ spec:
           - resources:
               kinds:
                 - Pod
+              operations:
+                - CREATE
+                - UPDATE
       # GKE-managed / system namespaces: blocking pod (re)creation here can
       # break DNS, logging, node upgrades, or Kyverno itself.
       exclude:
@@ -37,9 +43,17 @@ spec:
                 - config-management-monitoring
                 - cnrm-system
       validate:
-        message: "Containers must set securityContext.allowPrivilegeEscalation to false."
-        pattern:
-          spec:
-            containers:
-              - securityContext:
-                  allowPrivilegeEscalation: false
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            # unset defaults to true at runtime, so it must be explicitly false
+            - expression: >-
+                variables.allContainers.all(c,
+                  c.?securityContext.?allowPrivilegeEscalation.orValue(true) == false)
+              message: >-
+                Privilege escalation is disallowed. All containers (including
+                init containers) must set
+                securityContext.allowPrivilegeEscalation to false.

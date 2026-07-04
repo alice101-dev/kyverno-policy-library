@@ -18,6 +18,7 @@ results:
     kind: Pod
     resources:
       - bad-pod-escalation
+      - bad-pod-init-escalation
     result: fail
   - policy: disallow-privilege-escalation
     rule: disallow-privilege-escalation

@@ -24,6 +24,22 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: bad-pod-init-escalation
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      image: busybox:1.37
+      # allowPrivilegeEscalation unset on the init container — must be rejected
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: exempt-system-pod
   namespace: kube-system
 spec:

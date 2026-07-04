@@ -17,7 +17,7 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset or overridden, incl. init containers) | **CEL** |
 | [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems (incl. init containers) | **CEL** |
 | [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor | pattern |
-| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true | pattern |
+| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true (incl. init containers) | **CEL** |
 | [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) | **CEL** |
 | [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need | pattern |
 | [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) | pattern |

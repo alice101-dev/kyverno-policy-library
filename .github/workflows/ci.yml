@@ -13,7 +13,7 @@ env:
 
 jobs:
   kyverno-test:
-    name: Policy tests (kyverno test)
+    name: Policy Unit Tests (kyverno test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
