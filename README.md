@@ -14,7 +14,7 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | Policy | Category | Rejects | Style |
 | --- | --- | --- | --- |
 | [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + limits | pattern |
-| [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset) | pattern |
+| [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset or overridden, incl. init containers) | **CEL** |
 | [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems (incl. init containers) | **CEL** |
 | [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor | pattern |
 | [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true | pattern |

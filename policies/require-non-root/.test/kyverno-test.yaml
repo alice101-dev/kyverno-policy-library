@@ -18,6 +18,8 @@ results:
     kind: Pod
     resources:
       - bad-pod-root
+      - bad-pod-container-override
+      - bad-pod-init-root
     result: fail
   - policy: require-non-root
     rule: require-run-as-non-root

@@ -22,6 +22,35 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: bad-pod-container-override
+spec:
+  securityContext:
+    runAsNonRoot: true
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        # opts back out of the pod-level setting — must be rejected
+        runAsNonRoot: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-init-root
+spec:
+  initContainers:
+    - name: setup
+      image: busybox:1.37
+      # no runAsNonRoot on the init container — must be rejected
+  containers:
+    - name: app
+      image: nginxinc/nginx-unprivileged:1.29-alpine
+      securityContext:
+        runAsNonRoot: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: exempt-system-pod
   namespace: kube-system
 spec:

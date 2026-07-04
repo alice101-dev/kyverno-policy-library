@@ -7,10 +7,13 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
     policies.kyverno.io/description: >-
       A container running as root that escapes to the node runs as root on the
-      host. This policy requires runAsNonRoot=true at the pod or container
-      level.
+      host. This policy requires runAsNonRoot=true at the pod level (with no
+      container opting back out) or on every container, including init
+      containers. Ephemeral (debug) containers are exempt so kubectl debug
+      keeps working.
 spec:
   validationFailureAction: Enforce
   background: true
@@ -21,6 +24,9 @@ spec:
           - resources:
               kinds:
                 - Pod
+              operations:
+                - CREATE
+                - UPDATE
       # GKE-managed / system namespaces: blocking pod (re)creation here can
       # break DNS, logging, node upgrades, or Kyverno itself.
       exclude:
@@ -37,12 +43,24 @@ spec:
                 - config-management-monitoring
                 - cnrm-system
       validate:
-        message: "Containers must set securityContext.runAsNonRoot to true (pod or container level)."
-        anyPattern:
-          - spec:
-              securityContext:
-                runAsNonRoot: true
-          - spec:
-              containers:
-                - securityContext:
-                    runAsNonRoot: true
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+            - name: podLevelEnforced
+              # pod-level runAsNonRoot=true, and no container opts back out
+              expression: >-
+                object.spec.?securityContext.?runAsNonRoot.orValue(false) &&
+                variables.allContainers.all(c,
+                  c.?securityContext.?runAsNonRoot.orValue(true) == true)
+            - name: containerLevelEnforced
+              expression: >-
+                variables.allContainers.all(c,
+                  c.?securityContext.?runAsNonRoot.orValue(false) == true)
+          expressions:
+            - expression: variables.podLevelEnforced || variables.containerLevelEnforced
+              message: >-
+                Running as root is not allowed. Set runAsNonRoot=true on
+                spec.securityContext (with no container overriding it to false),
+                or on every container and init container.
