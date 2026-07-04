@@ -7,11 +7,14 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
     policies.kyverno.io/description: >-
       seccomp and AppArmor confine a container's syscalls and its file/network/
       capability access at the kernel level. This policy requires the
-      RuntimeDefault profile for both (pod-level securityContext). AppArmor via
-      securityContext requires Kubernetes 1.30+.
+      RuntimeDefault profile for both at the pod level, and rejects any
+      container or init container that overrides it with a different profile.
+      Ephemeral (debug) containers are exempt so kubectl debug keeps working.
+      AppArmor via securityContext requires Kubernetes 1.30+.
 spec:
   validationFailureAction: Enforce
   background: true
@@ -22,6 +25,9 @@ spec:
           - resources:
               kinds:
                 - Pod
+              operations:
+                - CREATE
+                - UPDATE
       # GKE-managed / system namespaces: blocking pod (re)creation here can
       # break DNS, logging, node upgrades, or Kyverno itself.
       exclude:
@@ -38,18 +44,31 @@ spec:
                 - config-management-monitoring
                 - cnrm-system
       validate:
-        message: "Pod securityContext.seccompProfile.type must be RuntimeDefault."
-        pattern:
-          spec:
-            securityContext:
-              seccompProfile:
-                type: RuntimeDefault
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            # containers with no profile inherit the pod-level one, so only an
+            # explicit different profile counts as an override
+            - expression: >-
+                object.spec.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' &&
+                variables.allContainers.all(c,
+                  c.?securityContext.?seccompProfile.?type.orValue('RuntimeDefault') == 'RuntimeDefault')
+              message: >-
+                Pod securityContext.seccompProfile.type must be RuntimeDefault,
+                and no container (including init containers) may override it
+                with a different profile.
     - name: require-apparmor-runtimedefault
       match:
         any:
           - resources:
               kinds:
                 - Pod
+              operations:
+                - CREATE
+                - UPDATE
       # GKE-managed / system namespaces: blocking pod (re)creation here can
       # break DNS, logging, node upgrades, or Kyverno itself.
       exclude:
@@ -66,9 +85,17 @@ spec:
                 - config-management-monitoring
                 - cnrm-system
       validate:
-        message: "Pod securityContext.appArmorProfile.type must be RuntimeDefault (Kubernetes 1.30+)."
-        pattern:
-          spec:
-            securityContext:
-              appArmorProfile:
-                type: RuntimeDefault
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            - expression: >-
+                object.spec.?securityContext.?appArmorProfile.?type.orValue('') == 'RuntimeDefault' &&
+                variables.allContainers.all(c,
+                  c.?securityContext.?appArmorProfile.?type.orValue('RuntimeDefault') == 'RuntimeDefault')
+              message: >-
+                Pod securityContext.appArmorProfile.type must be RuntimeDefault
+                (Kubernetes 1.30+), and no container (including init containers)
+                may override it with a different profile.

@@ -27,6 +27,25 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: bad-pod-seccomp-override
+  namespace: backend
+spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    appArmorProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        seccompProfile:
+          # opts out of the pod-level profile — seccomp rule must reject
+          type: Unconfined
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: exempt-system-pod
   namespace: kube-system
 spec:
