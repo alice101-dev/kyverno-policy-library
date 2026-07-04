@@ -22,6 +22,8 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
 | [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
 | [`no-loadbalancer-service`](policies/no-loadbalancer-service/) | Network Security | Services of type LoadBalancer (internet-facing by default, billable) |
+| [`restrict-image-registries`](policies/restrict-image-registries/) | Supply Chain | images from registries outside the trusted allowlist (incl. init containers) |
+| [`require-image-digests`](policies/require-image-digests/) | Supply Chain | images not pinned by `@sha256:` digest — tags are mutable (incl. init containers) |
 | [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
 | [`imagepullpolicy-always`](policies/imagepullpolicy-always/) | Supply Chain | mutable-tag images without `imagePullPolicy: Always` |
 | [`block-images-with-volumes`](policies/block-images-with-volumes/) | Supply Chain | images built with VOLUME statements (silently bypass read-only rootfs) |

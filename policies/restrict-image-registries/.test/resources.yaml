@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-trusted-registry
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      image: gcr.io/my-project/setup:2.1.0
+  containers:
+    - name: app
+      image: asia-southeast2-docker.pkg.dev/my-project/apps/web:1.2.3
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-docker-hub
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      # no registry host — implicitly docker.io, must be rejected
+      image: nginx:1.29
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-lookalike-registry
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      # registry host merely *starts with* gcr.io — must be rejected
+      image: gcr.io.evil.example.com/app:1.0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-init-untrusted
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      # init container pulls from an untrusted registry — must be rejected
+      image: ghcr.io/example/setup:1.0
+  containers:
+    - name: app
+      image: asia-southeast2-docker.pkg.dev/my-project/apps/web:1.2.3
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: nginx:latest
+      # non-compliant, but kube-system is excluded — the rule must be skipped

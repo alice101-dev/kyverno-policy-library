@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-digest
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx@sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-tag-and-digest
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      # tag plus digest is fine — the digest wins at pull time
+      image: nginx:1.29@sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-tag-only
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      # pinned tag, but still mutable — must be rejected
+      image: nginx:1.29
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-init-tag-only
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      # init container not digest-pinned — must be rejected
+      image: busybox:1.37
+  containers:
+    - name: app
+      image: nginx@sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: nginx:latest
+      # non-compliant, but kube-system is excluded — the rule must be skipped

@@ -1,0 +1,59 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-digests
+  annotations:
+    policies.kyverno.io/title: Require Images Use Digests
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      A tag — even a pinned one like 1.29 — is mutable: the registry can serve
+      different content under the same tag tomorrow. A digest
+      (@sha256:...) is immutable, so what was reviewed and scanned is exactly
+      what runs, and a rollback restores a build rather than a name. This
+      policy requires every image reference to include a digest; the build
+      pipeline must resolve digests at release time. Applies to regular and
+      init containers; ephemeral (debug) containers are exempt so kubectl
+      debug keeps working.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-digest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            - expression: >-
+                variables.allContainers.all(c, c.image.contains('@sha256:'))
+              message: >-
+                Images (including init containers) must be pinned by digest
+                (image@sha256:...); tags are mutable.
