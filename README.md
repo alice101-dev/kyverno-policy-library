@@ -49,6 +49,16 @@ kyverno test ./policies/
 kyverno apply policies/require-non-root/policy.yaml --resource my-deployment.yaml
 ```
 
+> [!WARNING]
+> Both commands above are **offline** — safe anywhere. But don't
+> `kubectl apply` these policies straight onto a cluster that already runs
+> workloads: they ship with `Enforce`, so every non-compliant Deployment gets
+> **blocked at its next rollout, restart, or scale-up** (existing pods keep
+> running — until they need to be recreated, e.g. by a node upgrade). On a
+> busy cluster that can freeze deploys team-wide. Follow
+> [Rolling out safely](#rolling-out-safely) instead: `Audit` first, fix the
+> offenders, then `Enforce`.
+
 ## Rolling out safely
 
 Policies ship with `validationFailureAction: Enforce` (block). When introducing
