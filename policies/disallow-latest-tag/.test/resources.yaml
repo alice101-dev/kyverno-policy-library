@@ -10,11 +10,30 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: good-pod-digest
+spec:
+  containers:
+    - name: app
+      image: nginx@sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: bad-pod-latest
 spec:
   containers:
     - name: app
       image: nginx:latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-port-no-tag
+spec:
+  containers:
+    - name: app
+      # the ':' is a registry port, not a tag — must be rejected as untagged
+      image: registry.example.com:5000/app
 ---
 apiVersion: v1
 kind: Pod

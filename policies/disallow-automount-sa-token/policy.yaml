@@ -7,6 +7,7 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: medium
     policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
     policies.kyverno.io/description: >-
       A mounted service-account token is a credential an attacker can steal to
       talk to the Kubernetes API. Workloads that don't call the API (most of
@@ -21,6 +22,9 @@ spec:
           - resources:
               kinds:
                 - Pod
+              operations:
+                - CREATE
+                - UPDATE
       # GKE-managed / system namespaces: blocking pod (re)creation here can
       # break DNS, logging, node upgrades, or Kyverno itself.
       exclude:
@@ -37,7 +41,12 @@ spec:
                 - config-management-monitoring
                 - cnrm-system
       validate:
-        message: "Pods must set automountServiceAccountToken to false unless they call the Kubernetes API."
-        pattern:
-          spec:
-            automountServiceAccountToken: "false"
+        cel:
+          expressions:
+            # unset inherits the ServiceAccount's setting (usually true),
+            # so it must be explicitly false on the pod
+            - expression: >-
+                object.spec.?automountServiceAccountToken.orValue(true) == false
+              message: >-
+                Pods must set automountServiceAccountToken to false unless they
+                call the Kubernetes API.

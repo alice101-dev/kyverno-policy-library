@@ -11,33 +11,40 @@ fixtures, so the library is a real gate, not a pile of YAML.
 
 ## Policies
 
-| Policy | Category | Rejects | Style |
-| --- | --- | --- | --- |
-| [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + limits | pattern |
-| [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset or overridden, incl. init containers) | **CEL** |
-| [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems (incl. init containers) | **CEL** |
-| [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor, or containers overriding them | **CEL** |
-| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true (incl. init containers) | **CEL** |
-| [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) | **CEL** |
-| [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need | pattern |
-| [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) | pattern |
-| [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest` / untagged images (not reproducible) | pattern |
-| [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace | pattern |
+| Policy | Category | Rejects |
+| --- | --- | --- |
+| [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + memory limit (incl. init containers) |
+| [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset or overridden, incl. init containers) |
+| [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems (incl. init containers) |
+| [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor, or containers overriding them |
+| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true (incl. init containers) |
+| [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) |
+| [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
+| [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) |
+| [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
+| [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace |
 
 Each folder holds the `ClusterPolicy` plus a `.test/` directory with the
 fixtures and a `kyverno test` spec that asserts pass/fail per resource.
 
-### Validation style: CEL where it earns its keep
+### Validation style: CEL
 
-Rules are written in [CEL](https://kyverno.io/docs/policy-types/cluster-policy/validate/#common-expression-language-cel) —
-Kubernetes' native validation language (Kyverno 1.11+) — whenever it buys real
-power: iterating over *all* containers including `initContainers`,
-optional-field handling (`.?field.orValue()`), and case-insensitive matching.
-CEL is also where the ecosystem is heading — the same expressions power
-Kubernetes' built-in `ValidatingAdmissionPolicy`. Where a rule is just "this
-field must look like this", the declarative `pattern` style stays: it mirrors
-the manifest it validates and needs no programming to read. New policies
-default to CEL unless a pattern is plainly clearer.
+Every rule is written in [CEL](https://kyverno.io/docs/policy-types/cluster-policy/validate/#common-expression-language-cel) —
+Kubernetes' native validation language (Kyverno 1.11+), the same expressions
+that power the built-in `ValidatingAdmissionPolicy`. Compared to the
+declarative `pattern` style these policies started with, CEL buys:
+
+- one loop over *all* containers, `initContainers` included (patterns silently
+  skipped them);
+- catching containers that override a compliant pod-level setting
+  (`runAsNonRoot`, seccomp/AppArmor);
+- explicit defaults for unset fields (`.?field.orValue(...)`) that match what
+  the kubelet actually does at runtime;
+- real string logic — e.g. a registry port (`registry:5000/app`) is not
+  mistaken for an image tag.
+
+Ephemeral containers are deliberately left out of the container loops so
+`kubectl debug` keeps working.
 
 ## Why this exists
 

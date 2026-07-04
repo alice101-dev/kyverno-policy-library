@@ -27,6 +27,25 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: bad-pod-init-no-limits
+spec:
+  initContainers:
+    - name: setup
+      image: busybox:1.37
+      # no resources on the init container — must be rejected
+  containers:
+    - name: app
+      image: nginx:1.29
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          memory: "256Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: exempt-system-pod
   namespace: kube-system
 spec:
