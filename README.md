@@ -62,17 +62,27 @@ kubectl get policyreport -A   # what currently violates the policy
 
 ### System namespaces are excluded (GKE-safe)
 
-Every rule carries an `exclude` block for cluster/system namespaces:
-`kube-system`, `kube-public`, `kube-node-lease`, `kyverno`, and the
-GKE-managed ones (`gke-*`, `gmp-*`, `config-management-*`, `cnrm-system`).
-System pods (kube-dns, konnectivity, metrics-server, ...) run as root with
-writable filesystems by design; blocking their re-creation during a node
-upgrade or auto-repair can take down DNS, logging, and metrics — or deadlock
-Kyverno itself. Each policy's test suite includes a non-compliant pod in
-`kube-system` and asserts it is **skipped**, not rejected. Don't rely solely
-on the Kyverno install's `resourceFilters`/webhook `namespaceSelector`:
-those depend on install-time values, while these exclusions travel with the
-policies.
+These policies only govern **your** workloads. Every rule excludes the
+namespaces the cluster itself depends on:
+
+| Excluded namespaces | Why |
+| --- | --- |
+| `kube-system`, `kube-public`, `kube-node-lease` | Core components (kube-dns, konnectivity, metrics-server, ...) run as root with writable filesystems *by design*. |
+| `kyverno` | A policy that blocks Kyverno's own pods would deadlock admission for the whole cluster. |
+| `gke-*`, `gmp-*`, `config-management-*`, `cnrm-system` | GKE-managed add-ons (Managed Prometheus, Config Sync, Config Connector). |
+
+Without these exclusions, a node upgrade or auto-repair — which recreates
+system pods — could be blocked by the webhook and take down DNS, logging,
+and metrics.
+
+Two guarantees back this up:
+
+- **Tested**: every policy's test suite includes a non-compliant pod in
+  `kube-system` and asserts it is *skipped*, not rejected. Removing an
+  exclusion fails CI.
+- **Portable**: the exclusions live in the policies themselves, so they work
+  regardless of how Kyverno was installed (`resourceFilters` and webhook
+  `namespaceSelector` vary per install).
 
 ## CI
 
