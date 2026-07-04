@@ -13,28 +13,30 @@ fixtures, so the library is a real gate, not a pile of YAML.
 
 | Policy | Category | Rejects |
 | --- | --- | --- |
-| [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + memory limit (incl. init containers) |
 | [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset or overridden, incl. init containers) |
 | [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems (incl. init containers) |
 | [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor, or containers overriding them |
 | [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true (incl. init containers) |
 | [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) |
 | [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
-| [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) |
-| [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
-| [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace |
-| [`require-pod-probes`](policies/require-pod-probes/) | High Availability | containers with no liveness, readiness, or startup probe |
 | [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
 | [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
-| [`no-loadbalancer-service`](policies/no-loadbalancer-service/) | Network Security | Services of type LoadBalancer (each one creates a billable cloud LB) |
-| [`disallow-deprecated-apis`](policies/disallow-deprecated-apis/) | Best Practices | manifests pinned to API versions removed in Kubernetes 1.25–1.32 |
-| [`prevent-bare-pods`](policies/prevent-bare-pods/) | Best Practices | Pods with no ownerReference (not managed by any controller) |
-| [`require-container-port-names`](policies/require-container-port-names/) | Best Practices | containerPorts without a `name` |
+| [`no-loadbalancer-service`](policies/no-loadbalancer-service/) | Network Security | Services of type LoadBalancer (internet-facing by default, billable) |
+| [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
 | [`imagepullpolicy-always`](policies/imagepullpolicy-always/) | Supply Chain | mutable-tag images without `imagePullPolicy: Always` |
 | [`block-images-with-volumes`](policies/block-images-with-volumes/) | Supply Chain | images built with VOLUME statements (silently bypass read-only rootfs) |
 
-Each folder holds the `ClusterPolicy` plus a `.test/` directory with the
-fixtures and a `kyverno test` spec that asserts pass/fail per resource.
+The library also ships operational (non-security) guardrails not listed above:
+[`require-requests-limits`](policies/require-requests-limits/),
+[`require-pod-probes`](policies/require-pod-probes/),
+[`require-pod-anti-affinity`](policies/require-pod-anti-affinity/),
+[`disallow-default-namespace`](policies/disallow-default-namespace/),
+[`disallow-deprecated-apis`](policies/disallow-deprecated-apis/),
+[`prevent-bare-pods`](policies/prevent-bare-pods/), and
+[`require-container-port-names`](policies/require-container-port-names/).
+
+Each folder holds the policy plus a `.test/` directory with the fixtures and a
+`kyverno test` spec that asserts pass/fail per resource.
 
 ### Validation style: CEL
 
