@@ -22,6 +22,7 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
 | [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
 | [`no-loadbalancer-service`](policies/no-loadbalancer-service/) | Network Security | Services of type LoadBalancer (internet-facing by default, billable) |
+| [`verify-image-signatures`](policies/verify-image-signatures/) | Supply Chain | images without a valid cosign signature from the release key |
 | [`restrict-image-registries`](policies/restrict-image-registries/) | Supply Chain | images from registries outside the trusted allowlist (incl. init containers) |
 | [`require-image-digests`](policies/require-image-digests/) | Supply Chain | images not pinned by `@sha256:` digest — tags are mutable (incl. init containers) |
 | [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
@@ -67,6 +68,13 @@ K8s `ValidatingAdmissionPolicy`-style spec. `block-images-with-volumes` also
 uses the `image.GetMetadata()` CEL library to inspect image configs from the
 registry; its tests mock those lookups with a CLI `Context` file so CI stays
 offline.
+
+One deliberate exception: [`verify-image-signatures`](policies/verify-image-signatures/)
+uses the classic `verifyImages` rule type rather than CEL — it is the form
+Kyverno's own CLI test suite exercises, and the CEL `ImageValidatingPolicy`
+cosign attestor could not be validated under `kyverno test`. Its test verifies
+real cosign signatures against `ghcr.io/kyverno/test-verify-image`, so it is
+the one test that needs network access (fine in GitHub Actions).
 
 ## Why this exists
 

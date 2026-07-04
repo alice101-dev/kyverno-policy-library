@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-signed
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      # publicly available image signed with the test key in the policy
+      image: ghcr.io/kyverno/test-verify-image:signed
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-unsigned
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/kyverno/test-verify-image:unsigned
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/kyverno/test-verify-image:unsigned
+      # unsigned, but kube-system is excluded — the rule must be skipped
