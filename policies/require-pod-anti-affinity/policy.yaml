@@ -1,0 +1,53 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-anti-affinity
+  annotations:
+    policies.kyverno.io/title: Require Replica Spreading
+    policies.kyverno.io/category: High Availability
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Deployment, StatefulSet
+    policies.kyverno.io/description: >-
+      A PDB can't protect availability if every replica lands on one node.
+      This policy requires workloads to spread replicas — via
+      topologySpreadConstraints, OR soft (preferred) pod anti-affinity, OR
+      hard (required) pod anti-affinity. Any of the three satisfies it.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-replica-spreading
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+      validate:
+        message: >-
+          Workloads must spread replicas across nodes/zones: set
+          topologySpreadConstraints, or soft/hard podAntiAffinity.
+        anyPattern:
+          # Option 1: topology spread constraints
+          - spec:
+              template:
+                spec:
+                  topologySpreadConstraints:
+                    - maxSkew: "?*"
+                      topologyKey: "?*"
+          # Option 2: soft (preferred) anti-affinity
+          - spec:
+              template:
+                spec:
+                  affinity:
+                    podAntiAffinity:
+                      preferredDuringSchedulingIgnoredDuringExecution:
+                        - weight: "?*"
+          # Option 3: hard (required) anti-affinity
+          - spec:
+              template:
+                spec:
+                  affinity:
+                    podAntiAffinity:
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        - topologyKey: "?*"

@@ -1,0 +1,87 @@
+# Good #1: topology spread constraints
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: good-topology-spread
+  namespace: backend
+spec:
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: web }
+      containers:
+        - name: app
+          image: nginx:1.29
+---
+# Good #2: soft (preferred) anti-affinity
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: good-soft-antiaffinity
+  namespace: backend
+spec:
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels: { app: web }
+      containers:
+        - name: app
+          image: nginx:1.29
+---
+# Good #3: hard (required) anti-affinity
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: good-hard-antiaffinity
+  namespace: backend
+spec:
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels: { app: web }
+      containers:
+        - name: app
+          image: nginx:1.29
+---
+# Bad: no spreading of any kind
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bad-no-spreading
+  namespace: backend
+spec:
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.29

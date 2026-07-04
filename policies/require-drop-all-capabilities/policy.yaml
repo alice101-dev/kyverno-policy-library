@@ -1,0 +1,33 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-drop-all-capabilities
+  annotations:
+    policies.kyverno.io/title: Require Dropping All Capabilities
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Linux capabilities are fine-grained root privileges (NET_ADMIN, SYS_ADMIN,
+      ...). Most containers need none. This policy requires dropping ALL and
+      adding back only what a workload genuinely needs — the least-privilege
+      default of the restricted Pod Security Standard.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-drop-all
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Containers must drop ALL capabilities (securityContext.capabilities.drop must include ALL)."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL

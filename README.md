@@ -16,7 +16,11 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + limits |
 | [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset) |
 | [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems |
+| [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor |
+| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true |
+| [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities |
 | [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
+| [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) |
 | [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest` / untagged images (not reproducible) |
 | [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace |
 

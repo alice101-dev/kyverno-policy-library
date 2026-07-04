@@ -1,0 +1,33 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-runtimedefault-profiles
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: require-runtimedefault-profiles
+    rule: require-seccomp-runtimedefault
+    kind: Pod
+    resources:
+      - good-pod-profiles
+    result: pass
+  - policy: require-runtimedefault-profiles
+    rule: require-apparmor-runtimedefault
+    kind: Pod
+    resources:
+      - good-pod-profiles
+    result: pass
+  - policy: require-runtimedefault-profiles
+    rule: require-seccomp-runtimedefault
+    kind: Pod
+    resources:
+      - bad-pod-no-profiles
+    result: fail
+  - policy: require-runtimedefault-profiles
+    rule: require-apparmor-runtimedefault
+    kind: Pod
+    resources:
+      - bad-pod-no-profiles
+    result: fail

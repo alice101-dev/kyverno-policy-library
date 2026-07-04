@@ -1,0 +1,44 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-runtimedefault-profiles
+  annotations:
+    policies.kyverno.io/title: Require RuntimeDefault Seccomp and AppArmor
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      seccomp and AppArmor confine a container's syscalls and its file/network/
+      capability access at the kernel level. This policy requires the
+      RuntimeDefault profile for both (pod-level securityContext). AppArmor via
+      securityContext requires Kubernetes 1.30+.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-seccomp-runtimedefault
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Pod securityContext.seccompProfile.type must be RuntimeDefault."
+        pattern:
+          spec:
+            securityContext:
+              seccompProfile:
+                type: RuntimeDefault
+    - name: require-apparmor-runtimedefault
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Pod securityContext.appArmorProfile.type must be RuntimeDefault (Kubernetes 1.30+)."
+        pattern:
+          spec:
+            securityContext:
+              appArmorProfile:
+                type: RuntimeDefault

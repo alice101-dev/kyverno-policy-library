@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-no-escalation
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-escalation
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      # allowPrivilegeEscalation defaults to true — must be rejected

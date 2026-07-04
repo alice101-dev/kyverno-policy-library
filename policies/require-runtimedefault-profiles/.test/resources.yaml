@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-profiles
+  namespace: backend
+spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    appArmorProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: nginx:1.29
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-no-profiles
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      # no seccomp / apparmor profiles — must be rejected by both rules
