@@ -26,6 +26,24 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
+  name: bad-pod-init-keeps-caps
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      image: busybox:1.37
+      # no capabilities.drop in init container — must be rejected
+  containers:
+    - name: app
+      image: nginx:1.29
+      securityContext:
+        capabilities:
+          drop:
+            - ALL
+---
+apiVersion: v1
+kind: Pod
+metadata:
   name: exempt-system-pod
   namespace: kube-system
 spec:

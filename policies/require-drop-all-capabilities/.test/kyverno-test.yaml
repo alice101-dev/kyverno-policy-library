@@ -18,6 +18,7 @@ results:
     kind: Pod
     resources:
       - bad-pod-keeps-caps
+      - bad-pod-init-keeps-caps
     result: fail
   - policy: require-drop-all-capabilities
     rule: require-drop-all
