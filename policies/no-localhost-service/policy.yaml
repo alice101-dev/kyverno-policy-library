@@ -1,0 +1,52 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: no-localhost-service
+  annotations:
+    policies.kyverno.io/title: Disallow Localhost ExternalName Services
+    policies.kyverno.io/category: Network Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Service
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      An ExternalName Service pointing at localhost resolves to the node (or
+      the Ingress controller pod) itself — a known trick for exploiting
+      vulnerabilities in some Ingress controllers by making them proxy to
+      their own loopback interface. This policy rejects ExternalName Services
+      whose externalName is localhost.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: no-localhost-service
+      match:
+        any:
+          - resources:
+              kinds:
+                - Service
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            # only ExternalName Services have an externalName to check
+            - expression: >-
+                object.spec.?type.orValue('ClusterIP') != 'ExternalName' ||
+                object.spec.?externalName.orValue('') != 'localhost'
+              message: Service of type ExternalName cannot point to localhost.

@@ -41,6 +41,23 @@ spec:
           cpu: "100m"
           memory: "128Mi"
         limits:
+          cpu: "200m"
+          memory: "256Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-no-cpu-limit
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          # no cpu limit — must be rejected
           memory: "256Mi"
 ---
 apiVersion: v1

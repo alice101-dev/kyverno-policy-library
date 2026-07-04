@@ -1,0 +1,27 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-jobs
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: restrict-jobs
+    rule: restrict-job-from-cronjob
+    kind: Job
+    resources:
+      - good-job-from-cronjob
+    result: pass
+  - policy: restrict-jobs
+    rule: restrict-job-from-cronjob
+    kind: Job
+    resources:
+      - bad-job-direct
+    result: fail
+  - policy: restrict-jobs
+    rule: restrict-job-from-cronjob
+    kind: Job
+    resources:
+      - exempt-system-job
+    result: skip

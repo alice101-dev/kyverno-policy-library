@@ -19,6 +19,7 @@ results:
     resources:
       - bad-pod-no-limits
       - bad-pod-init-no-limits
+      - bad-pod-no-cpu-limit
     result: fail
   - policy: require-requests-limits
     rule: require-requests-limits

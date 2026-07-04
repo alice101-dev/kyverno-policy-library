@@ -1,0 +1,52 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-jobs
+  annotations:
+    policies.kyverno.io/title: Restrict Jobs
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Job
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      A directly-created Job is an unaudited one-off: it runs arbitrary code
+      once, outside any schedule or GitOps trail. This policy only allows
+      Jobs created by a CronJob controller (i.e. carrying a CronJob
+      ownerReference). Note this also blocks
+      `kubectl create job --from=cronjob/...`, which copies the spec but sets
+      no ownerReference.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: restrict-job-from-cronjob
+      match:
+        any:
+          - resources:
+              kinds:
+                - Job
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                object.metadata.?ownerReferences.orValue([])
+                  .exists(o, o.kind == 'CronJob')
+              message: Jobs are only allowed if spawned from CronJobs.

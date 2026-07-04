@@ -21,6 +21,7 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
 | [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
 | [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
+| [`no-localhost-service`](policies/no-localhost-service/) | Network Security | ExternalName Services pointing at `localhost` (Ingress-controller exploit) |
 | [`no-loadbalancer-service`](policies/no-loadbalancer-service/) | Network Security | Services of type LoadBalancer (internet-facing by default, billable) |
 | [`verify-image-signatures`](policies/verify-image-signatures/) | Supply Chain | images without a valid cosign signature from the release key |
 | [`restrict-image-registries`](policies/restrict-image-registries/) | Supply Chain | images from registries outside the trusted allowlist (incl. init containers) |
@@ -35,7 +36,8 @@ The library also ships operational (non-security) guardrails not listed above:
 [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/),
 [`disallow-default-namespace`](policies/disallow-default-namespace/),
 [`disallow-deprecated-apis`](policies/disallow-deprecated-apis/),
-[`prevent-bare-pods`](policies/prevent-bare-pods/), and
+[`prevent-bare-pods`](policies/prevent-bare-pods/),
+[`restrict-jobs`](policies/restrict-jobs/), and
 [`require-container-port-names`](policies/require-container-port-names/).
 
 Each folder holds the policy plus a `.test/` directory with the fixtures and a
