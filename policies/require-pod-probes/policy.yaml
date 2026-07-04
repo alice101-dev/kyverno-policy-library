@@ -1,0 +1,56 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-pod-probes
+  annotations:
+    # Jobs and CronJobs run to completion — probes make no sense there
+    pod-policies.kyverno.io/autogen-controllers: DaemonSet,Deployment,StatefulSet
+    policies.kyverno.io/title: Require Pod Probes
+    policies.kyverno.io/category: High Availability
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      Without a livenessProbe the kubelet can't restart a hung container, and
+      without a readinessProbe a Service keeps routing traffic to a pod that
+      isn't ready — during deploys, restarts, and upgrades. This policy
+      requires every container to define at least one of livenessProbe,
+      readinessProbe, or startupProbe. Init containers are not checked (the
+      API only allows probes on restartable init containers).
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-probes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                object.spec.containers.all(c, has(c.livenessProbe) ||
+                  has(c.readinessProbe) || has(c.startupProbe))
+              message: >-
+                Liveness, readiness, or startup probes are required for all
+                containers.

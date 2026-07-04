@@ -23,7 +23,7 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) |
 | [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
 | [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace |
-| [`deny-exec-by-namespace-label`](policies/deny-exec-by-namespace-label/) | Pod Security | `kubectl exec` into namespaces labeled `exec=false` |
+| [`require-pod-probes`](policies/require-pod-probes/) | High Availability | containers with no liveness, readiness, or startup probe |
 
 Each folder holds the `ClusterPolicy` plus a `.test/` directory with the
 fixtures and a `kyverno test` spec that asserts pass/fail per resource.
@@ -46,12 +46,6 @@ declarative `pattern` style these policies started with, CEL buys:
 
 Ephemeral containers are deliberately left out of the container loops so
 `kubectl debug` keeps working.
-
-One deliberate exception: [`deny-exec-by-namespace-label`](policies/deny-exec-by-namespace-label/)
-keeps the classic `deny` + `apiCall` style. Its CEL form would match `CONNECT`
-requests on `pods/exec`, which `kyverno test` cannot simulate yet (the CLI
-hardcodes the `CREATE` operation) — upstream only tests that variant against a
-live cluster. The classic style keeps it unit-testable in CI.
 
 ## Why this exists
 
