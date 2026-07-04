@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: PodExecOptions
+metadata:
+  name: bad-exec-locked-ns
+  namespace: payments
+container: app
+command:
+  - sh
+stdin: true
+tty: true
+---
+apiVersion: v1
+kind: PodExecOptions
+metadata:
+  name: good-exec-open-ns
+  namespace: backend
+container: app
+command:
+  - sh
+stdin: true
+tty: true
+---
+apiVersion: v1
+kind: PodExecOptions
+metadata:
+  name: exempt-system-exec
+  namespace: kube-system
+container: app
+command:
+  - sh
+stdin: true
+tty: true
