@@ -20,7 +20,7 @@ jobs:
 
       - name: Install Kyverno CLI
         run: |
-          curl -sSL "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_amd64.tar.gz" | tar xz kyverno
+          curl -sSL "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz" | tar xz kyverno
           sudo mv kyverno /usr/local/bin/
 
       # Every policy ships good+bad fixtures; this proves each one accepts what

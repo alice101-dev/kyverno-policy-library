@@ -1,9 +1,10 @@
-# Kyverno Policy Library — cluster guardrails as code
+# Kyverno Policy Library — Policy as Code for Kubernetes
 
 [![CI](https://github.com/alice101-dev/kyverno-policy-library/actions/workflows/ci.yml/badge.svg)](https://github.com/alice101-dev/kyverno-policy-library/actions/workflows/ci.yml)
 
-The hardening my other repos apply *by hand*, turned into **admission-time law**
-with [Kyverno](https://kyverno.io). A deployment that forgets a resource limit,
+**Policy as Code** for Kubernetes: cluster guardrails defined, versioned, and
+unit-tested like software. The hardening my other repos apply *by hand*, turned
+into **admission-time law** with [Kyverno](https://kyverno.io). A deployment that forgets a resource limit,
 runs as root, or ships a `:latest` tag doesn't get a code-review comment — it
 gets **rejected by the cluster**. Every policy is unit-tested with good and bad
 fixtures, so the library is a real gate, not a pile of YAML.
