@@ -11,21 +11,33 @@ fixtures, so the library is a real gate, not a pile of YAML.
 
 ## Policies
 
-| Policy | Category | Rejects |
-| --- | --- | --- |
-| [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + limits |
-| [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset) |
-| [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems |
-| [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor |
-| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true |
-| [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities |
-| [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
-| [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) |
-| [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest` / untagged images (not reproducible) |
-| [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace |
+| Policy | Category | Rejects | Style |
+| --- | --- | --- | --- |
+| [`require-requests-limits`](policies/require-requests-limits/) | Resource Management | containers with no CPU/memory requests + limits | pattern |
+| [`require-non-root`](policies/require-non-root/) | Pod Security | containers that can run as root (`runAsNonRoot` unset) | pattern |
+| [`require-ro-rootfs`](policies/require-ro-rootfs/) | Pod Security | writable container root filesystems (incl. init containers) | **CEL** |
+| [`require-runtimedefault-profiles`](policies/require-runtimedefault-profiles/) | Pod Security | pods without RuntimeDefault seccomp **and** AppArmor | pattern |
+| [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true | pattern |
+| [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) | **CEL** |
+| [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need | pattern |
+| [`require-pod-anti-affinity`](policies/require-pod-anti-affinity/) | High Availability | workloads with no replica spreading (topology spread, or soft/hard anti-affinity) | pattern |
+| [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest` / untagged images (not reproducible) | pattern |
+| [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace | pattern |
 
 Each folder holds the `ClusterPolicy` plus a `.test/` directory with the
 fixtures and a `kyverno test` spec that asserts pass/fail per resource.
+
+### Validation style: CEL where it earns its keep
+
+Rules are written in [CEL](https://kyverno.io/docs/policy-types/cluster-policy/validate/#common-expression-language-cel) —
+Kubernetes' native validation language (Kyverno 1.11+) — whenever it buys real
+power: iterating over *all* containers including `initContainers`,
+optional-field handling (`.?field.orValue()`), and case-insensitive matching.
+CEL is also where the ecosystem is heading — the same expressions power
+Kubernetes' built-in `ValidatingAdmissionPolicy`. Where a rule is just "this
+field must look like this", the declarative `pattern` style stays: it mirrors
+the manifest it validates and needs no programming to read. New policies
+default to CEL unless a pattern is plainly clearer.
 
 ## Why this exists
 
