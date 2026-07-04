@@ -1,0 +1,33 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-deprecated-apis
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: disallow-deprecated-apis
+    rule: check-deprecated-apis
+    kind: CronJob
+    resources:
+      - bad-cronjob-v1beta1
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: check-deprecated-apis
+    kind: FlowSchema
+    resources:
+      - bad-flowschema-v1beta3
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: check-deprecated-apis
+    kind: HorizontalPodAutoscaler
+    resources:
+      - bad-hpa-v2beta2
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: check-deprecated-apis
+    kind: CronJob
+    resources:
+      - good-cronjob-v1
+    result: skip

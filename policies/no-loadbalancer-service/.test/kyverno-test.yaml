@@ -1,0 +1,27 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: no-loadbalancer-service
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: no-loadbalancer-service
+    isValidatingPolicy: true
+    kind: Service
+    resources:
+      - good-svc-cluster-ip
+    result: pass
+  - policy: no-loadbalancer-service
+    isValidatingPolicy: true
+    kind: Service
+    resources:
+      - bad-svc-loadbalancer
+    result: fail
+  - policy: no-loadbalancer-service
+    isValidatingPolicy: true
+    kind: Service
+    resources:
+      - exempt-system-svc
+    result: skip

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-clean-image
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/example/clean:1.0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-image-volume
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/example/withvol:1.0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-init-image-volume
+  namespace: backend
+spec:
+  initContainers:
+    - name: setup
+      image: ghcr.io/example/withvol:1.0
+  containers:
+    - name: app
+      image: ghcr.io/example/clean:1.0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/example/withvol:1.0

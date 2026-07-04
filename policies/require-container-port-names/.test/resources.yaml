@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-named-ports
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      ports:
+        - name: http
+          containerPort: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-no-ports
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      # declaring no ports at all is fine
+      image: nginx:1.29
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-unnamed-port
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      ports:
+        - containerPort: 8080

@@ -24,6 +24,14 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`disallow-latest-tag`](policies/disallow-latest-tag/) | Supply Chain | `:latest`, untagged, or port-only images — digest-pinned is fine (incl. init containers) |
 | [`disallow-default-namespace`](policies/disallow-default-namespace/) | Multi-Tenancy | workloads in the un-governed `default` namespace |
 | [`require-pod-probes`](policies/require-pod-probes/) | High Availability | containers with no liveness, readiness, or startup probe |
+| [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
+| [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
+| [`no-loadbalancer-service`](policies/no-loadbalancer-service/) | Network Security | Services of type LoadBalancer (each one creates a billable cloud LB) |
+| [`disallow-deprecated-apis`](policies/disallow-deprecated-apis/) | Best Practices | manifests pinned to API versions removed in Kubernetes 1.25–1.32 |
+| [`prevent-bare-pods`](policies/prevent-bare-pods/) | Best Practices | Pods with no ownerReference (not managed by any controller) |
+| [`require-container-port-names`](policies/require-container-port-names/) | Best Practices | containerPorts without a `name` |
+| [`imagepullpolicy-always`](policies/imagepullpolicy-always/) | Supply Chain | mutable-tag images without `imagePullPolicy: Always` |
+| [`block-images-with-volumes`](policies/block-images-with-volumes/) | Supply Chain | images built with VOLUME statements (silently bypass read-only rootfs) |
 
 Each folder holds the `ClusterPolicy` plus a `.test/` directory with the
 fixtures and a `kyverno test` spec that asserts pass/fail per resource.
@@ -46,6 +54,15 @@ declarative `pattern` style these policies started with, CEL buys:
 
 Ephemeral containers are deliberately left out of the container loops so
 `kubectl debug` keeps working.
+
+The rules come in two forms, both CEL. Most are `ClusterPolicy` with
+`validate.cel`; the newest additions (`no-loadbalancer-service`,
+`require-container-port-names`, `block-images-with-volumes`) use the
+next-generation `ValidatingPolicy` kind (Kyverno 1.14+) — same expressions,
+K8s `ValidatingAdmissionPolicy`-style spec. `block-images-with-volumes` also
+uses the `image.GetMetadata()` CEL library to inspect image configs from the
+registry; its tests mock those lookups with a CLI `Context` file so CI stays
+offline.
 
 ## Why this exists
 
@@ -112,6 +129,10 @@ Two guarantees back this up:
 - **Portable**: the exclusions live in the policies themselves, so they work
   regardless of how Kyverno was installed (`resourceFilters` and webhook
   `namespaceSelector` vary per install).
+
+`ClusterPolicy` rules carry the list as an `exclude` block; `ValidatingPolicy`
+rules express the same list as a `matchConditions` entry (that kind has no
+`exclude`).
 
 ## CI
 

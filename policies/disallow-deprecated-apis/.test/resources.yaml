@@ -1,0 +1,51 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: bad-cronjob-v1beta1
+  namespace: backend
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: job
+              image: busybox:1.37
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: good-cronjob-v1
+  namespace: backend
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: job
+              image: busybox:1.37
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1beta3
+kind: FlowSchema
+metadata:
+  name: bad-flowschema-v1beta3
+spec:
+  priorityLevelConfiguration:
+    name: workload-low
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bad-hpa-v2beta2
+  namespace: backend
+spec:
+  maxReplicas: 4
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web

@@ -1,0 +1,28 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Context
+metadata:
+  name: mock-image-metadata
+spec:
+  # offline stand-ins for the registry lookups image.GetMetadata() performs;
+  # `config` mirrors the OCI image config file
+  images:
+    - image: ghcr.io/example/clean:1.0
+      resolvedImage: ghcr.io/example/clean@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      registry: ghcr.io
+      repository: example/clean
+      tag: "1.0"
+      config:
+        architecture: amd64
+        os: linux
+        config: {}
+    - image: ghcr.io/example/withvol:1.0
+      resolvedImage: ghcr.io/example/withvol@sha256:2222222222222222222222222222222222222222222222222222222222222222
+      registry: ghcr.io
+      repository: example/withvol
+      tag: "1.0"
+      config:
+        architecture: amd64
+        os: linux
+        config:
+          Volumes:
+            /data: {}

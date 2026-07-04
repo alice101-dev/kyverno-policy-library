@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod-owned
+  namespace: backend
+  ownerReferences:
+    - apiVersion: apps/v1
+      kind: ReplicaSet
+      name: web-5d4f9c9b7d
+      uid: 8a7f9c3e-2b4d-4e6f-9a1b-3c5d7e9f1a2b
+      controller: true
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-bare
+  namespace: backend
+spec:
+  containers:
+    - name: app
+      image: nginx:1.29
+      # no ownerReferences — created by hand, must be rejected
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: exempt-system-pod
+  namespace: kube-system
+spec:
+  containers:
+    - name: app
+      image: nginx:latest
+      # non-compliant, but kube-system is excluded — the rule must be skipped

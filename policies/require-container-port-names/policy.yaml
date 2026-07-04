@@ -1,0 +1,46 @@
+apiVersion: policies.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: require-container-port-names
+  annotations:
+    policies.kyverno.io/title: Require Container Port Names
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.14.0
+    policies.kyverno.io/description: >-
+      A named containerPort can be referenced by name from Services and
+      NetworkPolicies, so the port number can change without breaking
+      references. This policy requires a name for every containerPort.
+spec:
+  validationActions:
+    - Deny
+  evaluation:
+    background:
+      enabled: true
+  # GKE-managed / system namespaces — ValidatingPolicy has no `exclude` block,
+  # so the same guardrail is expressed as a matchCondition.
+  matchConditions:
+    - name: exclude-system-namespaces
+      expression: >-
+        !(request.namespace in ['kube-system', 'kube-public', 'kube-node-lease',
+          'kyverno', 'config-management-system', 'config-management-monitoring',
+          'cnrm-system']) &&
+        !request.namespace.startsWith('gke-') &&
+        !request.namespace.startsWith('gmp-')
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+  validations:
+    - expression: >-
+        object.spec.containers.all(c,
+          c.?ports.orValue([]).all(port, has(port.name)))
+      message: Name is required for every containerPort.

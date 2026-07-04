@@ -1,0 +1,71 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-deprecated-apis
+  annotations:
+    policies.kyverno.io/title: Disallow Deprecated APIs
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: CronJob, HorizontalPodAutoscaler, FlowSchema
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      Kubernetes API versions get deprecated and eventually removed (these were
+      removed between 1.25 and 1.32). A manifest pinned to a dead API version
+      fails exactly when it hurts most — during a cluster upgrade. This policy
+      rejects such manifests at admission, and also works as an offline linter
+      via `kyverno apply`. Checking some of these kinds may require removing
+      them from the resourceFilters in Kyverno's ConfigMap.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-deprecated-apis
+      match:
+        any:
+          - resources:
+              kinds:
+                # removed in 1.25
+                - batch/v1beta1/CronJob
+                - discovery.k8s.io/v1beta1/EndpointSlice
+                - events.k8s.io/v1beta1/Event
+                - autoscaling/v2beta1/HorizontalPodAutoscaler
+                - node.k8s.io/v1beta1/RuntimeClass
+                - policy/v1beta1/PodDisruptionBudget
+                - policy/v1beta1/PodSecurityPolicy
+                # removed in 1.26
+                - autoscaling/v2beta2/HorizontalPodAutoscaler
+                - flowcontrol.apiserver.k8s.io/v1beta1/FlowSchema
+                - flowcontrol.apiserver.k8s.io/v1beta1/PriorityLevelConfiguration
+                # removed in 1.27
+                - storage.k8s.io/v1beta1/CSIStorageCapacity
+                # removed in 1.29
+                - flowcontrol.apiserver.k8s.io/v1beta2/FlowSchema
+                - flowcontrol.apiserver.k8s.io/v1beta2/PriorityLevelConfiguration
+                # removed in 1.32
+                - flowcontrol.apiserver.k8s.io/v1beta3/FlowSchema
+                - flowcontrol.apiserver.k8s.io/v1beta3/PriorityLevelConfiguration
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: "false"
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated or removed; use a current API version.'
