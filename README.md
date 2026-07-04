@@ -99,3 +99,8 @@ Every push and pull request runs through [GitHub Actions](.github/workflows/ci.y
 
 - **`kyverno test`** — every policy is exercised against its good/bad fixtures.
 - **Gitleaks** — full-history secret scan.
+
+## References
+
+- [Kyverno policy library](https://kyverno.io/policies/) — the official collection of ready-made policies.
+- [Kyverno Playground](https://playground.kyverno.io/#/) — try a policy against a resource in the browser, no cluster needed.
