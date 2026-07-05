@@ -56,12 +56,16 @@ The library also ships operational (non-security) guardrails not listed above:
 [`require-container-port-names`](policies/require-container-port-names/).
 
 Each folder holds the policy plus a `.test/` directory with the fixtures and a
-`kyverno test` spec that asserts pass/fail per resource — except the exec
-policies (`block-pod-exec`, `block-kubectl-cp`): CONNECT subresource admission
-cannot be simulated by `kyverno test`, so
-[`e2e/exec-policies.sh`](e2e/exec-policies.sh) covers them against a live kind
-cluster (real `kubectl exec`/`cp` calls, including the system-namespace
-exemption).
+`kyverno test` spec that asserts pass/fail per resource.
+
+Some behavior can't be simulated offline — CONNECT subresources (`kubectl
+exec`/`cp`), webhook registration, API-server defaulting. Those policies are
+covered by a live [`e2e/`](e2e/) suite instead: [`e2e/run.sh`](e2e/run.sh)
+spins up one kind cluster, installs Kyverno, and runs every
+[`e2e/tests/*.sh`](e2e/tests/) against it — currently the exec policies and
+`disallow-deprecated-apis`. Adding live coverage for another policy is just a
+new file under `e2e/tests/` that sources [`e2e/lib.sh`](e2e/lib.sh); no
+workflow change is needed.
 
 ### Validation style: CEL
 
@@ -118,9 +122,10 @@ kyverno test ./policies/
 # Dry-run a policy against your own manifest
 kyverno apply policies/require-non-root/policy.yaml --resource my-deployment.yaml
 
-# Live e2e for the exec policies — needs Docker; creates (and deletes) a
-# throwaway local kind cluster
-./e2e/exec-policies.sh
+# Live e2e for policies offline tests can't cover — needs Docker; creates
+# (and deletes) a throwaway local kind cluster
+./e2e/run.sh                   # all live tests
+./e2e/run.sh deprecated-apis   # just one
 ```
 
 > [!WARNING]
@@ -180,13 +185,13 @@ Every push and pull request runs through [GitHub Actions](.github/workflows/ci.y
 
 - **`kyverno test`** — every policy is exercised against its good/bad fixtures.
 - **Gitleaks** — full-history secret scan.
-- **Exec-policy e2e** ([e2e.yml](.github/workflows/e2e.yml)) — path-filtered:
-  when `block-pod-exec`, `block-kubectl-cp`, or the e2e suite change, CI spins
-  up a kind cluster, installs Kyverno, and asserts real `kubectl exec`/`cp`
-  calls against live admission (CONNECT cannot be simulated offline).
+- **Live e2e** ([e2e.yml](.github/workflows/e2e.yml)) — on any `policies/` or
+  `e2e/` change, CI runs [`e2e/run.sh`](e2e/run.sh): one kind cluster, Kyverno
+  installed, every `e2e/tests/*.sh` asserted against live admission (the exec
+  policies and `disallow-deprecated-apis`, which offline tests can't cover).
 
 ## References
 
 - [Kyverno policy library](https://kyverno.io/policies/) — the official collection of ready-made policies.
 - [Kyverno Playground](https://playground.kyverno.io/#/) — try a policy against a resource in the browser, no cluster needed.
-- [kind](https://github.com/kubernetes-sigs/kind) — run a throwaway local Kubernetes cluster in Docker, used by the exec-policy e2e suite.
+- [kind](https://github.com/kubernetes-sigs/kind) — run a throwaway local Kubernetes cluster in Docker, used by the live e2e suite.

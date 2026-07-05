@@ -1,21 +1,22 @@
 name: E2E (kind)
 
-# Live admission tests. Only the exec policies live here: kyverno test cannot
-# simulate CONNECT subresource admission, so e2e/exec-policies.sh is their
-# only automated gate. Path-filtered — the fast `kyverno test` job in ci.yml
-# remains the always-on gate for everything else.
+# Live admission tests for policies that kyverno test cannot cover (CONNECT
+# subresources, webhook registration, API-server defaulting, ...). One kind
+# cluster is created, Kyverno installed once, and every e2e/tests/*.sh runs
+# against it. The fast `kyverno test` job in ci.yml stays the always-on gate.
+#
+# Path filter is deliberately broad (any policy or e2e change): adding live
+# coverage means dropping an e2e/tests/<name>.sh file, with no workflow edit.
 on:
   push:
     branches: [main]
     paths:
-      - "policies/block-pod-exec/**"
-      - "policies/block-kubectl-cp/**"
+      - "policies/**"
       - "e2e/**"
       - ".github/workflows/e2e.yml"
   pull_request:
     paths:
-      - "policies/block-pod-exec/**"
-      - "policies/block-kubectl-cp/**"
+      - "policies/**"
       - "e2e/**"
       - ".github/workflows/e2e.yml"
 
@@ -27,10 +28,10 @@ env:
   KIND_VERSION: v0.32.0
 
 jobs:
-  exec-e2e:
-    name: Exec policies e2e (kind)
+  e2e:
+    name: Live policy e2e (kind)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
@@ -40,5 +41,5 @@ jobs:
           curl -sSLo kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
           chmod +x kind && sudo mv kind /usr/local/bin/
 
-      - name: Run exec-policies e2e
-        run: ./e2e/exec-policies.sh
+      - name: Run e2e suite
+        run: ./e2e/run.sh
