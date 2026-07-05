@@ -6,49 +6,49 @@ metadata:
     policies.kyverno.io/title: Disallow Deprecated APIs
     policies.kyverno.io/category: Best Practices
     policies.kyverno.io/severity: medium
-    policies.kyverno.io/subject: CronJob, HorizontalPodAutoscaler, FlowSchema
+    policies.kyverno.io/subject: Kubernetes APIs
     policies.kyverno.io/minversion: 1.11.0
     policies.kyverno.io/description: >-
-      Kubernetes API versions get deprecated and eventually removed (these were
-      removed between 1.25 and 1.32). A manifest pinned to a dead API version
-      fails exactly when it hurts most — during a cluster upgrade. This policy
-      rejects such manifests at admission, and also works as an offline linter
-      via `kyverno apply`. Checking some of these kinds may require removing
-      them from the resourceFilters in Kyverno's ConfigMap.
+      Kubernetes API versions get deprecated and eventually removed (everything
+      matched here was removed between 1.16 and 1.32). A manifest pinned to a
+      dead API version fails exactly when it hurts most — during a cluster
+      upgrade. This policy rejects such manifests at admission, and also works
+      as an offline linter via `kyverno apply`; rules for versions the cluster
+      no longer serves mostly earn their keep there, since the API server
+      rejects those versions itself before admission webhooks run. Checking
+      some of these kinds may require removing them from the resourceFilters
+      in Kyverno's ConfigMap. coordination.k8s.io/v1beta1 Lease is deliberately
+      not matched: Lease writes are constant (node heartbeats, leader election)
+      and routing them through the webhook is not worth the latency.
 spec:
   validationFailureAction: Enforce
   background: true
+  # Kinds are matched with a version wildcard and the deprecated version is
+  # checked in CEL instead. Matching the deprecated GVK directly registers a
+  # webhook for only that version, and the API server (matchPolicy Equivalent)
+  # then CONVERTS requests for current versions into it — wrongly blocking
+  # valid objects wherever the deprecated version is still served.
   rules:
-    - name: check-deprecated-apis
+    - name: validate-v1-16-removals
       match:
         any:
           - resources:
               kinds:
-                # removed in 1.25
-                - batch/v1beta1/CronJob
-                - discovery.k8s.io/v1beta1/EndpointSlice
-                - events.k8s.io/v1beta1/Event
-                - autoscaling/v2beta1/HorizontalPodAutoscaler
-                - node.k8s.io/v1beta1/RuntimeClass
-                - policy/v1beta1/PodDisruptionBudget
-                - policy/v1beta1/PodSecurityPolicy
-                # removed in 1.26
-                - autoscaling/v2beta2/HorizontalPodAutoscaler
-                - flowcontrol.apiserver.k8s.io/v1beta1/FlowSchema
-                - flowcontrol.apiserver.k8s.io/v1beta1/PriorityLevelConfiguration
-                # removed in 1.27
-                - storage.k8s.io/v1beta1/CSIStorageCapacity
-                # removed in 1.29
-                - flowcontrol.apiserver.k8s.io/v1beta2/FlowSchema
-                - flowcontrol.apiserver.k8s.io/v1beta2/PriorityLevelConfiguration
-                # removed in 1.32
-                - flowcontrol.apiserver.k8s.io/v1beta3/FlowSchema
-                - flowcontrol.apiserver.k8s.io/v1beta3/PriorityLevelConfiguration
+                - apps/*/DaemonSet
+                - apps/*/Deployment
+                - apps/*/ReplicaSet
+                - apps/*/StatefulSet
+                - extensions/*/DaemonSet
+                - extensions/*/Deployment
+                - extensions/*/NetworkPolicy
+                - extensions/*/PodSecurityPolicy
+                - extensions/*/ReplicaSet
               operations:
                 - CREATE
                 - UPDATE
       # GKE-managed / system namespaces: blocking pod (re)creation here can
-      # break DNS, logging, node upgrades, or Kyverno itself.
+      # break DNS, logging, node upgrades, or Kyverno itself. Repeated on
+      # every rule — ClusterPolicy has no policy-level exclude.
       exclude:
         any:
           - resources:
@@ -65,7 +65,247 @@ spec:
       validate:
         cel:
           expressions:
-            - expression: "false"
+            - expression: >-
+                !(object.apiVersion in
+                ['apps/v1beta1', 'apps/v1beta2', 'extensions/v1beta1'])
               messageExpression: >-
                 object.apiVersion + '/' + object.kind +
-                ' is deprecated or removed; use a current API version.'
+                ' is deprecated and was removed in v1.16. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    - name: validate-v1-22-removals
+      match:
+        any:
+          - resources:
+              # coordination.k8s.io Lease intentionally omitted, see the
+              # policy description.
+              kinds:
+                - admissionregistration.k8s.io/*/MutatingWebhookConfiguration
+                - admissionregistration.k8s.io/*/ValidatingWebhookConfiguration
+                - apiextensions.k8s.io/*/CustomResourceDefinition
+                - apiregistration.k8s.io/*/APIService
+                - authentication.k8s.io/*/TokenReview
+                - authorization.k8s.io/*/LocalSubjectAccessReview
+                - authorization.k8s.io/*/SelfSubjectAccessReview
+                - authorization.k8s.io/*/SubjectAccessReview
+                - certificates.k8s.io/*/CertificateSigningRequest
+                - extensions/*/Ingress
+                - networking.k8s.io/*/Ingress
+                - networking.k8s.io/*/IngressClass
+                - rbac.authorization.k8s.io/*/ClusterRole
+                - rbac.authorization.k8s.io/*/ClusterRoleBinding
+                - rbac.authorization.k8s.io/*/Role
+                - rbac.authorization.k8s.io/*/RoleBinding
+                - scheduling.k8s.io/*/PriorityClass
+                - storage.k8s.io/*/CSIDriver
+                - storage.k8s.io/*/CSINode
+                - storage.k8s.io/*/StorageClass
+                - storage.k8s.io/*/VolumeAttachment
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                !(object.apiVersion in
+                ['admissionregistration.k8s.io/v1beta1',
+                'apiextensions.k8s.io/v1beta1',
+                'apiregistration.k8s.io/v1beta1',
+                'authentication.k8s.io/v1beta1',
+                'authorization.k8s.io/v1beta1',
+                'certificates.k8s.io/v1beta1',
+                'extensions/v1beta1',
+                'networking.k8s.io/v1beta1',
+                'rbac.authorization.k8s.io/v1beta1',
+                'scheduling.k8s.io/v1beta1',
+                'storage.k8s.io/v1beta1'])
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated and was removed in v1.22. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    - name: validate-v1-25-removals
+      match:
+        any:
+          - resources:
+              kinds:
+                - batch/*/CronJob
+                - discovery.k8s.io/*/EndpointSlice
+                - events.k8s.io/*/Event
+                - autoscaling/*/HorizontalPodAutoscaler
+                - node.k8s.io/*/RuntimeClass
+                - policy/*/PodDisruptionBudget
+                - policy/*/PodSecurityPolicy
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                !(object.apiVersion in
+                ['batch/v1beta1',
+                'discovery.k8s.io/v1beta1',
+                'events.k8s.io/v1beta1',
+                'autoscaling/v2beta1',
+                'node.k8s.io/v1beta1',
+                'policy/v1beta1'])
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated and was removed in v1.25. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    - name: validate-v1-26-removals
+      match:
+        any:
+          - resources:
+              kinds:
+                - autoscaling/*/HorizontalPodAutoscaler
+                - flowcontrol.apiserver.k8s.io/*/FlowSchema
+                - flowcontrol.apiserver.k8s.io/*/PriorityLevelConfiguration
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                !(object.apiVersion in
+                ['autoscaling/v2beta2',
+                'flowcontrol.apiserver.k8s.io/v1beta1'])
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated and was removed in v1.26. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    - name: validate-v1-27-removals
+      match:
+        any:
+          - resources:
+              kinds:
+                - storage.k8s.io/*/CSIStorageCapacity
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                object.apiVersion != 'storage.k8s.io/v1beta1'
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated and was removed in v1.27. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    - name: validate-v1-29-removals
+      match:
+        any:
+          - resources:
+              kinds:
+                - flowcontrol.apiserver.k8s.io/*/FlowSchema
+                - flowcontrol.apiserver.k8s.io/*/PriorityLevelConfiguration
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                object.apiVersion != 'flowcontrol.apiserver.k8s.io/v1beta2'
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated and was removed in v1.29. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    - name: validate-v1-32-removals
+      match:
+        any:
+          - resources:
+              kinds:
+                - flowcontrol.apiserver.k8s.io/*/FlowSchema
+                - flowcontrol.apiserver.k8s.io/*/PriorityLevelConfiguration
+              operations:
+                - CREATE
+                - UPDATE
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                object.apiVersion != 'flowcontrol.apiserver.k8s.io/v1beta3'
+              messageExpression: >-
+                object.apiVersion + '/' + object.kind +
+                ' is deprecated and was removed in v1.32. See:
+                https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
