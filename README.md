@@ -9,6 +9,19 @@ runs as root, or ships a `:latest` tag doesn't get a code-review comment — it
 gets **rejected by the cluster**. Every policy is unit-tested with good and bad
 fixtures, so the library is a real gate, not a pile of YAML.
 
+Without Policy as Code, every one of those controls exists only as a
+convention — a wiki page, a review checklist, a Slack reminder. **The cluster
+itself will accept anything RBAC lets through**: a root container one kernel
+CVE away from owning its node, an unsigned image from a registry nobody
+vetted, a `:latest` tag that silently changes meaning between rollouts, a
+Service that quietly exposes an internal API to the internet, a `kubectl exec`
+that tampers with a workload leaving no trace in git. None of that is exotic
+misconfiguration — it is the **default behavior of a vanilla cluster**, and a
+single missed line in code review is all it takes to ship it. Policy as Code
+turns the conventions into versioned, tested, enforced rules: the difference
+between *"we ask teams not to run as root"* and *"the API server refuses
+root"*.
+
 ## Policies
 
 | Policy | Category | Rejects |
