@@ -189,3 +189,4 @@ Every push and pull request runs through [GitHub Actions](.github/workflows/ci.y
 
 - [Kyverno policy library](https://kyverno.io/policies/) — the official collection of ready-made policies.
 - [Kyverno Playground](https://playground.kyverno.io/#/) — try a policy against a resource in the browser, no cluster needed.
+- [kind](https://github.com/kubernetes-sigs/kind) — run a throwaway local Kubernetes cluster in Docker, used by the exec-policy e2e suite.
