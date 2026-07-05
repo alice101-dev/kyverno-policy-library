@@ -19,6 +19,8 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true (incl. init containers) |
 | [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) |
 | [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
+| [`block-pod-exec`](policies/block-pod-exec/) | Pod Security | `kubectl exec`/`attach` sessions outside system namespaces — interactive access bypasses manifest review |
+| [`block-kubectl-cp`](policies/block-kubectl-cp/) | Pod Security | `kubectl cp` (an exec running `tar`) — file exfiltration/tampering channel |
 | [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
 | [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
 | [`no-localhost-service`](policies/no-localhost-service/) | Network Security | ExternalName Services pointing at `localhost` (Ingress-controller exploit) |
@@ -41,7 +43,12 @@ The library also ships operational (non-security) guardrails not listed above:
 [`require-container-port-names`](policies/require-container-port-names/).
 
 Each folder holds the policy plus a `.test/` directory with the fixtures and a
-`kyverno test` spec that asserts pass/fail per resource.
+`kyverno test` spec that asserts pass/fail per resource — except the exec
+policies (`block-pod-exec`, `block-kubectl-cp`): CONNECT subresource admission
+cannot be simulated by `kyverno test`, so
+[`e2e/exec-policies.sh`](e2e/exec-policies.sh) covers them against a live kind
+cluster (real `kubectl exec`/`cp` calls, including the system-namespace
+exemption).
 
 ### Validation style: CEL
 

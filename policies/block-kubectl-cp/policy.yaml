@@ -1,0 +1,56 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-kubectl-cp
+  annotations:
+    policies.kyverno.io/title: Block kubectl cp
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      `kubectl cp` copies files in and out of containers — an exfiltration and
+      tamper channel. Under the hood it is just `kubectl exec` running `tar`,
+      so this policy denies exec sessions whose command is tar (which also
+      catches running tar manually). It is a heuristic, not a seal: a user who
+      may still exec can read files with `cat`; for a hard guarantee deploy
+      block-pod-exec instead. Exec sessions are not persisted objects, so
+      background scanning is off and admission is the only enforcement point.
+      `kyverno test` cannot simulate CONNECT admission; this policy is
+      verified live by e2e/exec-policies.sh on a kind cluster.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: deny-tar-exec
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod/exec
+              operations:
+                - CONNECT
+      # GKE-managed / system namespaces: operators and Google-managed agents
+      # must keep shell access for node debugging and support.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            - expression: >-
+                !has(object.command) || object.command.size() == 0 ||
+                object.command[0] != 'tar'
+              message: >-
+                kubectl cp is blocked (it runs tar over exec). Ship files in
+                the image or use an object store instead.
