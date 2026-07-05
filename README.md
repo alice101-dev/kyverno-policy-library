@@ -19,6 +19,8 @@ fixtures, so the library is a real gate, not a pile of YAML.
 | [`disallow-privilege-escalation`](policies/disallow-privilege-escalation/) | Pod Security | containers with `allowPrivilegeEscalation` unset/true (incl. init containers) |
 | [`require-drop-all-capabilities`](policies/require-drop-all-capabilities/) | Pod Security | containers that don't drop ALL Linux capabilities (incl. init containers) |
 | [`disallow-automount-sa-token`](policies/disallow-automount-sa-token/) | Pod Security | pods that mount a Kubernetes API token they don't need |
+| [`block-pod-exec`](policies/block-pod-exec/) | Pod Security | `kubectl exec`/`attach` sessions outside system namespaces — interactive access bypasses manifest review |
+| [`block-kubectl-cp`](policies/block-kubectl-cp/) | Pod Security | `kubectl cp` (an exec running `tar`) — file exfiltration/tampering channel |
 | [`restrict-external-ips`](policies/restrict-external-ips/) | Network Security | Services setting `externalIPs` (CVE-2020-8554 MITM vector) |
 | [`restrict-nodeport`](policies/restrict-nodeport/) | Network Security | Services of type NodePort (host ports bypass NetworkPolicy) |
 | [`no-localhost-service`](policies/no-localhost-service/) | Network Security | ExternalName Services pointing at `localhost` (Ingress-controller exploit) |
@@ -41,7 +43,12 @@ The library also ships operational (non-security) guardrails not listed above:
 [`require-container-port-names`](policies/require-container-port-names/).
 
 Each folder holds the policy plus a `.test/` directory with the fixtures and a
-`kyverno test` spec that asserts pass/fail per resource.
+`kyverno test` spec that asserts pass/fail per resource — except the exec
+policies (`block-pod-exec`, `block-kubectl-cp`): CONNECT subresource admission
+cannot be simulated by `kyverno test`, so
+[`e2e/exec-policies.sh`](e2e/exec-policies.sh) covers them against a live kind
+cluster (real `kubectl exec`/`cp` calls, including the system-namespace
+exemption).
 
 ### Validation style: CEL
 
@@ -97,10 +104,15 @@ kyverno test ./policies/
 
 # Dry-run a policy against your own manifest
 kyverno apply policies/require-non-root/policy.yaml --resource my-deployment.yaml
+
+# Live e2e for the exec policies — needs Docker; creates (and deletes) a
+# throwaway local kind cluster
+./e2e/exec-policies.sh
 ```
 
 > [!WARNING]
-> Both commands above are **offline** — safe anywhere. But don't
+> The commands above are **offline** or run against a throwaway local
+> cluster — safe anywhere. But don't
 > `kubectl apply` these policies straight onto a cluster that already runs
 > workloads: they ship with `Enforce`, so every non-compliant Deployment gets
 > **blocked at its next rollout, restart, or scale-up** (existing pods keep
@@ -138,8 +150,9 @@ and metrics.
 Two guarantees back this up:
 
 - **Tested**: every policy's test suite includes a non-compliant pod in
-  `kube-system` and asserts it is *skipped*, not rejected. Removing an
-  exclusion fails CI.
+  `kube-system` and asserts it is *skipped*, not rejected — the exec policies
+  assert it live instead: their e2e suite execs into a `kube-system` pod and
+  expects it allowed. Removing an exclusion fails CI.
 - **Portable**: the exclusions live in the policies themselves, so they work
   regardless of how Kyverno was installed (`resourceFilters` and webhook
   `namespaceSelector` vary per install).
@@ -154,6 +167,10 @@ Every push and pull request runs through [GitHub Actions](.github/workflows/ci.y
 
 - **`kyverno test`** — every policy is exercised against its good/bad fixtures.
 - **Gitleaks** — full-history secret scan.
+- **Exec-policy e2e** ([e2e.yml](.github/workflows/e2e.yml)) — path-filtered:
+  when `block-pod-exec`, `block-kubectl-cp`, or the e2e suite change, CI spins
+  up a kind cluster, installs Kyverno, and asserts real `kubectl exec`/`cp`
+  calls against live admission (CONNECT cannot be simulated offline).
 
 ## References
 

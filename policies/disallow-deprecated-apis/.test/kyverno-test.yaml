@@ -8,26 +8,64 @@ resources:
   - resources.yaml
 results:
   - policy: disallow-deprecated-apis
-    rule: check-deprecated-apis
+    rule: validate-v1-16-removals
+    kind: Deployment
+    resources:
+      - bad-deployment-apps-v1beta1
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-22-removals
+    kind: Ingress
+    resources:
+      - bad-ingress-extensions-v1beta1
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-25-removals
     kind: CronJob
     resources:
       - bad-cronjob-v1beta1
     result: fail
   - policy: disallow-deprecated-apis
-    rule: check-deprecated-apis
-    kind: FlowSchema
-    resources:
-      - bad-flowschema-v1beta3
-    result: fail
-  - policy: disallow-deprecated-apis
-    rule: check-deprecated-apis
+    rule: validate-v1-26-removals
     kind: HorizontalPodAutoscaler
     resources:
       - bad-hpa-v2beta2
     result: fail
   - policy: disallow-deprecated-apis
-    rule: check-deprecated-apis
+    rule: validate-v1-27-removals
+    kind: CSIStorageCapacity
+    resources:
+      - bad-csistoragecapacity-v1beta1
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-29-removals
+    kind: FlowSchema
+    resources:
+      - bad-flowschema-v1beta2
+    result: fail
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-32-removals
+    kind: FlowSchema
+    resources:
+      - bad-flowschema-v1beta3
+    result: fail
+  # Current API versions match the version-wildcard rules but pass the CEL
+  # version check.
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-25-removals
     kind: CronJob
     resources:
       - good-cronjob-v1
+    result: pass
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-32-removals
+    kind: FlowSchema
+    resources:
+      - good-flowschema-v1
+    result: pass
+  - policy: disallow-deprecated-apis
+    rule: validate-v1-25-removals
+    kind: CronJob
+    resources:
+      - bad-cronjob-kube-system
     result: skip
