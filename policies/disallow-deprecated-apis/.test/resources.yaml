@@ -1,0 +1,117 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: bad-deployment-apps-v1beta1
+  namespace: backend
+spec:
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: bad-ingress-extensions-v1beta1
+  namespace: backend
+spec:
+  backend:
+    serviceName: web
+    servicePort: 80
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: bad-cronjob-v1beta1
+  namespace: backend
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: job
+              image: busybox:1.37
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: good-cronjob-v1
+  namespace: backend
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: job
+              image: busybox:1.37
+---
+# Same violation as bad-cronjob-v1beta1, but in an excluded system namespace:
+# must be skipped, not rejected.
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: bad-cronjob-kube-system
+  namespace: kube-system
+spec:
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: job
+              image: busybox:1.37
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bad-hpa-v2beta2
+  namespace: backend
+spec:
+  maxReplicas: 4
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+---
+apiVersion: storage.k8s.io/v1beta1
+kind: CSIStorageCapacity
+metadata:
+  name: bad-csistoragecapacity-v1beta1
+  namespace: backend
+storageClassName: standard
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1beta2
+kind: FlowSchema
+metadata:
+  name: bad-flowschema-v1beta2
+spec:
+  priorityLevelConfiguration:
+    name: workload-low
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1beta3
+kind: FlowSchema
+metadata:
+  name: bad-flowschema-v1beta3
+spec:
+  priorityLevelConfiguration:
+    name: workload-low
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: good-flowschema-v1
+spec:
+  priorityLevelConfiguration:
+    name: workload-low

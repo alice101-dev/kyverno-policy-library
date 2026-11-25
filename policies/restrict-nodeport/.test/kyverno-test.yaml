@@ -1,0 +1,27 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-nodeport
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: restrict-nodeport
+    rule: validate-nodeport
+    kind: Service
+    resources:
+      - good-svc-cluster-ip
+    result: pass
+  - policy: restrict-nodeport
+    rule: validate-nodeport
+    kind: Service
+    resources:
+      - bad-svc-nodeport
+    result: fail
+  - policy: restrict-nodeport
+    rule: validate-nodeport
+    kind: Service
+    resources:
+      - exempt-system-svc
+    result: skip

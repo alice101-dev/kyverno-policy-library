@@ -1,0 +1,45 @@
+name: E2E (kind)
+
+# Live admission tests for policies that kyverno test cannot cover (CONNECT
+# subresources, webhook registration, API-server defaulting, ...). One kind
+# cluster is created, Kyverno installed once, and every e2e/tests/*.sh runs
+# against it. The fast `kyverno test` job in ci.yml stays the always-on gate.
+#
+# Path filter is deliberately broad (any policy or e2e change): adding live
+# coverage means dropping an e2e/tests/<name>.sh file, with no workflow edit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "policies/**"
+      - "e2e/**"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    paths:
+      - "policies/**"
+      - "e2e/**"
+      - ".github/workflows/e2e.yml"
+
+permissions:
+  contents: read
+
+env:
+  # Same version the suite was verified with locally.
+  KIND_VERSION: v0.32.0
+
+jobs:
+  e2e:
+    name: Live policy e2e (kind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # docker, kubectl and helm are preinstalled on ubuntu-latest.
+      - name: Install kind
+        run: |
+          curl -sSLo kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+          chmod +x kind && sudo mv kind /usr/local/bin/
+
+      - name: Run e2e suite
+        run: ./e2e/run.sh

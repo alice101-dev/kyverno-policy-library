@@ -1,0 +1,59 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-drop-all-capabilities
+  annotations:
+    policies.kyverno.io/title: Require Dropping All Capabilities
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      Linux capabilities are fine-grained root privileges (NET_ADMIN, SYS_ADMIN,
+      ...). Most containers need none. This policy requires dropping ALL and
+      adding back only what a workload genuinely needs — the least-privilege
+      default of the restricted Pod Security Standard. Applies to regular and
+      init containers; ephemeral (debug) containers are exempt so kubectl debug
+      keeps working.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-drop-all
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            - expression: >-
+                variables.allContainers.all(c,
+                  c.?securityContext.?capabilities.?drop.orValue([])
+                    .exists(capability, capability.upperAscii() == 'ALL'))
+              message: >-
+                All containers (including init containers) must drop ALL
+                capabilities (securityContext.capabilities.drop must include ALL).

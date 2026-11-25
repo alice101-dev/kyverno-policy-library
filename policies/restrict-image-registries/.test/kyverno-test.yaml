@@ -1,0 +1,29 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-image-registries
+policies:
+  - ../policy.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: restrict-image-registries
+    rule: validate-registries
+    kind: Pod
+    resources:
+      - good-pod-trusted-registry
+    result: pass
+  - policy: restrict-image-registries
+    rule: validate-registries
+    kind: Pod
+    resources:
+      - bad-pod-docker-hub
+      - bad-pod-lookalike-registry
+      - bad-pod-init-untrusted
+    result: fail
+  - policy: restrict-image-registries
+    rule: validate-registries
+    kind: Pod
+    resources:
+      - exempt-system-pod
+    result: skip

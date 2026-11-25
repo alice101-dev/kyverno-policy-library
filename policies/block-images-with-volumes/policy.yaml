@@ -1,0 +1,56 @@
+apiVersion: policies.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: block-images-with-volumes
+  annotations:
+    policies.kyverno.io/title: Block Images with Volumes
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.15.0
+    policies.kyverno.io/description: >-
+      An OCI image built with a VOLUME statement gets an implicit writable
+      mount at that path even when the container runs with a read-only root
+      filesystem — silently undermining require-ro-rootfs. This policy fetches
+      each image's config from the registry and rejects images that declare
+      VOLUMEs. Applies to regular and init containers; ephemeral (debug)
+      containers are exempt so kubectl debug keeps working.
+spec:
+  validationActions:
+    - Deny
+  evaluation:
+    background:
+      enabled: true
+  # GKE-managed / system namespaces — ValidatingPolicy has no `exclude` block,
+  # so the same guardrail is expressed as a matchCondition.
+  matchConditions:
+    - name: exclude-system-namespaces
+      expression: >-
+        !(request.namespace in ['kube-system', 'kube-public', 'kube-node-lease',
+          'kyverno', 'config-management-system', 'config-management-monitoring',
+          'cnrm-system']) &&
+        !request.namespace.startsWith('gke-') &&
+        !request.namespace.startsWith('gmp-')
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - pods
+  variables:
+    - name: allContainers
+      expression: >-
+        object.spec.containers + object.spec.?initContainers.orValue([])
+  validations:
+    # OCI VOLUMEs live at config.config.Volumes; the extra config.Volumes
+    # check also covers flattened image-config shapes
+    - expression: >-
+        variables.allContainers.all(c,
+          size(image.GetMetadata(c.image).config.?config.?Volumes.orValue({})) == 0 &&
+          size(image.GetMetadata(c.image).config.?Volumes.orValue({})) == 0)
+      message: Images containing built-in VOLUME statements are prohibited.

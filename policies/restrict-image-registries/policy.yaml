@@ -1,0 +1,64 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      An image from an unknown registry is code from an unknown publisher —
+      typosquatted or compromised images on public registries are a standard
+      supply-chain attack. This policy allows images only from an explicit
+      list of trusted registry prefixes; an image with no registry host
+      (implicitly docker.io) is rejected too. Applies to regular and init
+      containers; ephemeral (debug) containers are exempt so kubectl debug
+      keeps working.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          variables:
+            # Edit this list for your organisation. Every entry must end with
+            # '/', otherwise gcr.io.evil.example.com would satisfy 'gcr.io'.
+            - name: allowedRegistries
+              expression: >-
+                ['asia-southeast2-docker.pkg.dev/', 'gcr.io/']
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            - expression: >-
+                variables.allContainers.all(c,
+                  variables.allowedRegistries.exists(r, c.image.startsWith(r)))
+              message: >-
+                Images (including init containers) must come from a trusted
+                registry: asia-southeast2-docker.pkg.dev or gcr.io.

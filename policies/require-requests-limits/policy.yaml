@@ -1,0 +1,60 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-requests-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Requests and Limits
+    policies.kyverno.io/category: Resource Management
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      Containers without CPU/memory requests and limits let a single noisy pod
+      starve its neighbours or get OOM-killed unpredictably. This policy
+      requires every container, including init containers, to declare requests
+      and limits for both CPU and memory. Ephemeral (debug) containers are
+      exempt so kubectl debug keeps working.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-requests-limits
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            - expression: >-
+                variables.allContainers.all(c,
+                  c.?resources.?requests.?cpu.hasValue() &&
+                  c.?resources.?requests.?memory.hasValue() &&
+                  c.?resources.?limits.?cpu.hasValue() &&
+                  c.?resources.?limits.?memory.hasValue())
+              message: >-
+                CPU and memory requests and limits are required for every
+                container (including init containers).

@@ -1,0 +1,48 @@
+apiVersion: policies.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: no-loadbalancer-service
+  annotations:
+    policies.kyverno.io/title: Disallow Service Type LoadBalancer
+    policies.kyverno.io/category: Network Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Service
+    policies.kyverno.io/minversion: 1.14.0
+    policies.kyverno.io/description: >-
+      On GKE, a Service of type LoadBalancer makes the cloud controller create
+      a real Google Cloud load balancer — billable, internet-facing by
+      default, and easy to sprawl. This policy rejects LoadBalancer Services
+      so exposure goes through governed paths (Ingress/Gateway); grant
+      exceptions per namespace where an LB is genuinely needed.
+spec:
+  validationActions:
+    - Deny
+  evaluation:
+    background:
+      enabled: true
+  # GKE-managed / system namespaces — ValidatingPolicy has no `exclude` block,
+  # so the same guardrail is expressed as a matchCondition.
+  matchConditions:
+    - name: exclude-system-namespaces
+      expression: >-
+        !(request.namespace in ['kube-system', 'kube-public', 'kube-node-lease',
+          'kyverno', 'config-management-system', 'config-management-monitoring',
+          'cnrm-system']) &&
+        !request.namespace.startsWith('gke-') &&
+        !request.namespace.startsWith('gmp-')
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - services
+  validations:
+    # an unset type defaults to ClusterIP
+    - expression: >-
+        object.spec.?type.orValue('ClusterIP') != 'LoadBalancer'
+      message: Services of type LoadBalancer are not allowed.

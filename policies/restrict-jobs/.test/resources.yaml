@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: good-job-from-cronjob
+  namespace: backend
+  ownerReferences:
+    - apiVersion: batch/v1
+      kind: CronJob
+      name: nightly-report
+      uid: 3f2a1b7c-9d8e-4f6a-b5c4-1e2d3f4a5b6c
+      controller: true
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: busybox:1.37
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bad-job-direct
+  namespace: backend
+  # no ownerReferences — created directly, must be rejected
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: busybox:1.37
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: exempt-system-job
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: busybox:1.37

@@ -1,0 +1,79 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      A registry allowlist and digest pinning still trust the registry itself.
+      A cosign signature does not: the image must have been signed by the
+      release pipeline's private key, so a compromised registry or hijacked
+      push credential cannot inject workloads. This policy verifies cosign
+      signatures for matching images at admission. The imageReferences glob
+      and public key below are placeholders wired to Kyverno's public test
+      image — replace them with your registry and the verification key from
+      your signing pipeline.
+spec:
+  validationFailureAction: Enforce
+  # verifyImages runs at admission only; request context is required
+  background: false
+  # registry round-trips are slower than plain validation
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      verifyImages:
+        # Replace with your registry glob, e.g.
+        # "asia-southeast2-docker.pkg.dev/my-project/*" — images that don't
+        # match any entry here are not signature-checked by this policy.
+        - imageReferences:
+            - "ghcr.io/kyverno/test-verify-image*"
+          required: true
+          # validation-only: don't rewrite images to digest form on admit
+          mutateDigest: false
+          verifyDigest: false
+          useCache: true
+          failureAction: Enforce
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    # Kyverno's public test key — replace with your release
+                    # public key (cosign public-key output of your pipeline)
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8nXRh950IZbRj8Ra/N9sbqOPZrfM
+                      5/KAQN0/KjHcorm/J5yctVd7iEcnessRQjU917hmKO6JWVGHpDguIyakZA==
+                      -----END PUBLIC KEY-----
+                    signatureAlgorithm: sha256
+                    # the test image was signed without SCT/transparency-log
+                    # upload; drop these two blocks if your pipeline signs
+                    # with Rekor (cosign's default)
+                    ctlog:
+                      ignoreSCT: true
+                    rekor:
+                      ignoreTlog: true
+                      url: https://rekor.sigstore.dev

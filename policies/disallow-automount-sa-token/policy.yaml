@@ -1,0 +1,52 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-automount-sa-token
+  annotations:
+    policies.kyverno.io/title: Disallow Automounting Service Account Tokens
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      A mounted service-account token is a credential an attacker can steal to
+      talk to the Kubernetes API. Workloads that don't call the API (most of
+      them) should set automountServiceAccountToken=false.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-automount-sa-token
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          expressions:
+            # unset inherits the ServiceAccount's setting (usually true),
+            # so it must be explicitly false on the pod
+            - expression: >-
+                object.spec.?automountServiceAccountToken.orValue(true) == false
+              message: >-
+                Pods must set automountServiceAccountToken to false unless they
+                call the Kubernetes API.

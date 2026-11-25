@@ -1,0 +1,63 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: imagepullpolicy-always
+  annotations:
+    policies.kyverno.io/title: Require imagePullPolicy Always for Mutable Tags
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.11.0
+    policies.kyverno.io/description: >-
+      A mutable tag (:latest or no tag) can be overwritten in the registry; a
+      node that already cached the old image would silently keep running it
+      unless imagePullPolicy is Always. disallow-latest-tag already blocks
+      such images — this policy is the backstop for namespaces where that
+      policy gets a PolicyException. Digest-pinned images are immutable and
+      exempt. Applies to regular and init containers; ephemeral (debug)
+      containers are exempt so kubectl debug keeps working.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: imagepullpolicy-always
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      # GKE-managed / system namespaces: blocking pod (re)creation here can
+      # break DNS, logging, node upgrades, or Kyverno itself.
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - gke-*
+                - gmp-*
+                - config-management-system
+                - config-management-monitoring
+                - cnrm-system
+      validate:
+        cel:
+          variables:
+            - name: allContainers
+              expression: >-
+                object.spec.containers + object.spec.?initContainers.orValue([])
+          expressions:
+            # the tag lives after the last '/', so a registry port
+            # (registry:5000/app) doesn't count as one
+            - expression: >-
+                variables.allContainers.all(c, c.image.contains('@') ? true :
+                  ((c.image.endsWith(':latest') ||
+                    !c.image.substring(c.image.lastIndexOf('/') + 1).contains(':')) ?
+                      c.?imagePullPolicy.orValue('') == 'Always' : true))
+              message: >-
+                imagePullPolicy must be Always when the :latest tag is used or
+                the tag is missing.
